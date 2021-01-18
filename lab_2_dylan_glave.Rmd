@@ -1,0 +1,56 @@
+---
+title: "Lab 2 (D Glave"
+author: "Dylan Glave"
+date: "1/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(palmerpenguins)
+library(here)
+# for PCA
+library(ggfortify)
+
+# for ggplot customization
+library(readxl)
+library(gghighlight)
+library(plotly)
+
+# for compound figures
+library(patchwork)
+```
+
+
+## Part 1: PCA with Penguins
+
+```{r}
+# going to scale, and breakdown by PCs
+
+penguins_pca <- penguins %>% 
+  select(body_mass_g, ends_with("_mm")) %>% 
+  drop_na() %>% 
+  scale() %>% 
+  prcomp()
+
+penguins_pca$rotation
+#Above, rotation shows the loadings (vector length) of each variable with each PC
+#Below, autoplot automatically selects the type of plot that I want to make in ggplot. Since we've converted penguins_pca into a list for of PCs, it assumed we wnat a PCA biplot
+# Making a df of penguin info that matches the PCA. we'll have the same observation set, but will ahve info like species.
+
+penguin_complete <- penguins %>% 
+  drop_na(body_mass_g, ends_with("_mm"))
+# we use this MATCHING data to add aesthetics to the biplot
+autoplot(penguins_pca, 
+         data = penguin_complete,
+         colour = 'species',
+         loadings = TRUE,
+         loadings.label = TRUE) +
+  theme_minimal()
+# All the customization in ggplot is available in autoplot
+# facto_extra is another great place to play with biplots/PCA 
+```
+
+## Part 2: New skills for ggplot customization
