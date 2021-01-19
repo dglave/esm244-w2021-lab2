@@ -11,6 +11,7 @@ library(tidyverse)
 library(janitor)
 library(palmerpenguins)
 library(here)
+library(lubridate)
 # for PCA
 library(ggfortify)
 
@@ -53,4 +54,113 @@ autoplot(penguins_pca,
 # facto_extra is another great place to play with biplots/PCA 
 ```
 
-## Part 2: New skills for ggplot customization
+## Part 2: New skills for ggplot customization + Reading in different file types
+
+### Starting with .xlsx file
+
+```{r}
+fish_noaa <- read_excel(here("data", "foss_landings.xlsx")) %>% 
+  clean_names() %>% 
+  mutate(across(where(is.character), tolower)) %>% 
+  mutate(fish_name= str_sub(nmfs_name, end = -4)) %>% 
+  filter(confidentiality == "public")
+# Instead of adding columns, we're transforming columns w that function.for any character column, we send it to lower case. Across selects different columns, we chose all character columns (could be "ends_with("mm"). and within that we did 
+# We then used string_sub within mutate (stringr) to remove the last 4 characters.
+```
+
+Make a customized graph: 
+
+```{r}
+fish_plot <- ggplot(data =  fish_noaa, 
+                    aes( x = year, y = pounds)) + 
+  geom_line(aes(color = fish_name), show.legend = FALSE) +
+  theme_minimal()
+
+fish_plot
+
+ggplotly(fish_plot)
+#this makes any map interactive
+
+### use gghighlight to highlight certain series. 
+
+fish_plot_2 <- ggplot(data =  fish_noaa, 
+                    aes( x = year, y = pounds, group = fish_name)) +
+  geom_line() +
+  theme_minimal() +
+  gghighlight(fish_name == "tunas") + # Highlight just tunas
+  theme_minimal()
+
+fish_plot_2
+
+fish_plot_3 <- ggplot(data =  fish_noaa, 
+                    aes( x = year, y = pounds, group = fish_name)) +
+  geom_line() + # If we add aes to this, it only applies to gghighlighted area
+  theme_minimal() + 
+  gghighlight(max(pounds) > 1e8) + 
+    ###Highlight just series that have weights  over 10^8
+  theme_minimal()
+
+fish_plot_3
+```
+ We now know to how to make interactive graphs, AND highlight things! 
+ 
+ 
+####  Read in data from a URL, lubridate() refresher, mutate() as a workhorse to transform variables
+
+
+```{r}
+monroe_wt <- read_csv("https://data.bloomington.in.gov/dataset/2c81cfe3-62c2-46ed-8fcf-83c1880301d1/resource/13c8f7aa-af51-4008-80a9-56415c7c931e/download/mwtpdailyelectricitybclear.csv") %>% 
+  clean_names()
+
+# Let's make a graph BY MONTH of how much Kwh is used
+#Start by making dates a date. 
+#Make a new column to add month names to the numbered month
+# And then we'll change it to a factor, based on the number of months
+
+
+```
+
+
+```{r}
+monroe_ts <- monroe_wt %>% 
+  mutate(date = mdy(date)) %>% # Convert date to a stored date
+  mutate(record_month = month(date)) %>% 
+  mutate(month_name = month.abb[record_month]) %>% # This switches all recorded months to month names, as month.abb
+mutate(month_name = fct_reorder(month_name, record_month)) #change from character to factor, AND set the order based on another variable
+
+  
+  ggplot(data = monroe_ts, aes(x = month_name, y = total_kWh)) +
+  geom_jitter(aes(color = month_name),
+              show.legend = FALSE,
+              alpha = 0.7, 
+              size = 0.3,
+              width = 0.4)
+```
+
+### Part 3: Compound figures with 'patwork' 
+
+```{r}
+graph_a <- ggplot(data = penguins, aes(x = body_mass_g, y = flipper_length_mm)) +
+  geom_point()
+
+graph_b <- ggplot(data = penguins, aes(x = species, y = flipper_length_mm)) +
+  geom_jitter(aes(color = species))
+
+# Use | vertical line| side by side
+# use / to put graphs on top of one another
+
+graph_c <-  graph_a | graph_b #They go side by side! 
+(graph_a | graph_b) / fish_plot_3 & theme_dark()    
+#Use pemdas t put more figures together, via patchwork. 
+
+graph_c
+
+ggsave(here("fig", "graph_c_dg.png")) # you can customize width and height of figures, by specifying them within ggsave. 
+```
+
+
+## Part 2: Creating a Shiny App. 
+
+When we make an App, it's creates a new, moveable folder. 
+
+
